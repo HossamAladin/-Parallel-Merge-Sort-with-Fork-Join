@@ -49,7 +49,7 @@ public class SortBenchmark {
                 for (int i = 0; i < algorithms.length; i++) {
                     long avgNanos = benchmarkAlgorithm(algorithms[i], baseArray, RUNS_PER_CASE);
                     double avgMillis = avgNanos / 1_000_000.0;
-                    System.out.printf("  %-20s : %.3f ms%n", algorithmNames[i], avgMillis);
+                    System.out.printf("%-20s : %.1f ms%n", algorithmNames[i], avgMillis);
                 }
                 System.out.println();
             }
