@@ -14,14 +14,15 @@ All times are **average over 5 runs**, in **milliseconds (ms)**.
 
 | Size      | SequentialMergeSort | ParallelMergeSort | Arrays.sort | Arrays.parallelSort |
 |-----------|---------------------|-------------------|-------------|----------------------|
-| 10,000    | 1.131               | 1.731             | 1.610       | 1.865                |
+| 10,000    | 1.157               | 2.246             | 1.528       | 2.067                |
 | 100,000   | 10.514              | 3.971             | 8.671       | 6.119                |
 | 500,000   | 58.521              | 16.303            | 27.115      | 8.572                |
 | 1,000,000 | 119.410             | 32.522            | 57.144      | 17.632               |
 
 **Observations (Random pattern):**
 - **Small size (10,000)**:  
-  - `SequentialMergeSort` is fastest; parallel versions are slightly slower due to **thread creation/synchronization overhead**.
+  - `SequentialMergeSort` is fastest; parallel versions are slightly slower due to **thread creation/synchronization overhead**.  
+  - For this size, we explicitly used `ParallelMergeSort` with **threshold = 1,000**, while for sizes ≥100,000 we used **threshold = 10,000**.
 - **Medium & large sizes (≥100,000)**:  
   - `ParallelMergeSort` clearly outperforms your `SequentialMergeSort`.  
   - For very large arrays (500,000 and 1,000,000), **`Arrays.parallelSort` is the fastest overall**, beating both your custom algorithms and `Arrays.sort`.
@@ -36,7 +37,7 @@ All times are **average over 5 runs**, in **milliseconds (ms)**.
 
 | Size      | SequentialMergeSort | ParallelMergeSort | Arrays.sort | Arrays.parallelSort |
 |-----------|---------------------|-------------------|-------------|----------------------|
-| 10,000    | 0.551               | 0.506             | 0.383       | 0.285                |
+| 10,000    | 0.441               | 0.328             | 0.344       | 0.327                |
 | 100,000   | 4.434               | 1.668             | 0.051       | 0.061                |
 | 500,000   | 24.402              | 7.821             | 0.282       | 0.306                |
 | 1,000,000 | 51.486              | 13.500            | 0.721       | 0.627                |
@@ -57,8 +58,8 @@ All times are **average over 5 runs**, in **milliseconds (ms)**.
 
 | Size      | Pattern | Fastest Algorithm      | Avg Time (ms) |
 |-----------|---------|------------------------|---------------|
-| 10,000    | Random  | SequentialMergeSort    | 1.131         |
-| 10,000    | Reverse | Arrays.parallelSort    | 0.285         |
+| 10,000    | Random  | SequentialMergeSort    | 1.157         |
+| 10,000    | Reverse | Arrays.parallelSort    | 0.327         |
 | 100,000   | Random  | ParallelMergeSort      | 3.971         |
 | 100,000   | Reverse | Arrays.sort            | 0.051         |
 | 500,000   | Random  | Arrays.parallelSort    | 8.572         |
@@ -109,7 +110,7 @@ All times are **average over 5 runs**, in **milliseconds (ms)**.
 - **Java’s standard library is highly optimized**:  
   - Both `Arrays.sort` and `Arrays.parallelSort` are **hard to beat**, especially on **reverse** and **very large random** inputs.
 - **Best  choices based on the data**:
-  - **Small inputs (≈10,000)**: use **`SequentialMergeSort`** or `Arrays.sort` (differences are small).  
+  - **Small inputs (≈10,000)**: use **`SequentialMergeSort`** or `Arrays.sort` (differences are small). For this size we tested `ParallelMergeSort` with **threshold = 1,000**, while for all larger sizes we used **threshold = 10,000**.  
   - **Medium to large random inputs (≥100,000)**: prefer **`Arrays.parallelSort`**, then `ParallelMergeSort`.  
   - **Reverse/structured inputs**: always prefer **Java built-ins**, especially `Arrays.sort` / `Arrays.parallelSort`.
 
@@ -121,23 +122,25 @@ This section lists the **5 individual runs** for each configuration, along with 
 
 #### 6.1 Size = 10,000
 
+These runs use `ParallelMergeSort` with **threshold = 1,000**.
+
 **Pattern: Random**
 
-| Algorithm           | Run 1  | Run 2  | Run 3  | Run 4  | Run 5  | Average |
-|---------------------|--------|--------|--------|--------|--------|---------|
-| SequentialMergeSort | 1.657  | 0.960  | 0.951  | 0.943  | 1.143  | 1.131   |
-| ParallelMergeSort   | 4.028  | 1.180  | 1.252  | 1.106  | 1.088  | 1.731   |
-| Arrays.sort         | 3.584  | 1.805  | 0.830  | 1.118  | 0.710  | 1.610   |
-| Arrays.parallelSort | 1.911  | 1.690  | 2.250  | 1.419  | 2.056  | 1.865   |
+| Algorithm                         | Run 1  | Run 2  | Run 3  | Run 4  | Run 5  | Average |
+|-----------------------------------|--------|--------|--------|--------|--------|---------|
+| SequentialMergeSort               | 1.762  | 0.966  | 1.249  | 0.959  | 0.851  | 1.157   |
+| ParallelMergeSort (threshold=1000)| 5.309  | 2.674  | 1.058  | 1.046  | 1.144  | 2.246   |
+| Arrays.sort                       | 3.392  | 1.221  | 0.734  | 1.139  | 1.155  | 1.528   |
+| Arrays.parallelSort               | 2.149  | 1.754  | 2.364  | 1.870  | 2.197  | 2.067   |
 
 **Pattern: Reverse**
 
-| Algorithm           | Run 1  | Run 2  | Run 3  | Run 4  | Run 5  | Average |
-|---------------------|--------|--------|--------|--------|--------|---------|
-| SequentialMergeSort | 0.481  | 0.660  | 0.640  | 0.486  | 0.486  | 0.551   |
-| ParallelMergeSort   | 0.385  | 0.346  | 0.768  | 0.655  | 0.375  | 0.506   |
-| Arrays.sort         | 0.429  | 0.408  | 0.412  | 0.382  | 0.285  | 0.383   |
-| Arrays.parallelSort | 0.282  | 0.303  | 0.288  | 0.271  | 0.280  | 0.285   |
+| Algorithm                         | Run 1  | Run 2  | Run 3  | Run 4  | Run 5  | Average |
+|-----------------------------------|--------|--------|--------|--------|--------|---------|
+| SequentialMergeSort               | 0.667  | 0.296  | 0.312  | 0.460  | 0.470  | 0.441   |
+| ParallelMergeSort (threshold=1000)| 0.430  | 0.373  | 0.311  | 0.265  | 0.262  | 0.328   |
+| Arrays.sort                       | 0.369  | 0.381  | 0.302  | 0.271  | 0.397  | 0.344   |
+| Arrays.parallelSort               | 0.247  | 0.421  | 0.255  | 0.420  | 0.294  | 0.327   |
 
 #### 6.2 Size = 100,000
 
