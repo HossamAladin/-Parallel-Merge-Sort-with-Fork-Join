@@ -17,19 +17,16 @@ import java.util.Random;
  */
 public class SortBenchmark {
 
-    private static final int[] SIZES = {10_000};
+    // Benchmarked sizes (includes the larger sizes required by the coversheet/results table)
+    private static final int[] SIZES = {100_000, 500_000, 1_000_000};
     private static final int RUNS_PER_CASE = 5;
     private static final Random RANDOM = new Random();
 
     public static void main(String[] args) {
-        SortAlgorithm seq = new SequentialMergeSort();
-        SortAlgorithm par = new ParallelMergeSort(10_000);
         SortAlgorithm arraysSort = new ArraysSortAlgorithm();
         SortAlgorithm arraysParallelSort = new ArraysParallelSortAlgorithm();
 
-        SortAlgorithm[] algorithms = {seq, par, arraysSort, arraysParallelSort};
         String[] algorithmNames = {"SequentialMergeSort", "ParallelMergeSort", "Arrays.sort", "Arrays.parallelSort"};
-
         String[] patterns = {"Random", "Reverse"};
 
         System.out.println("=== Sort Benchmark ===");
@@ -37,6 +34,13 @@ public class SortBenchmark {
         System.out.println();
 
         for (int size : SIZES) {
+            // Use threshold=10_000 for all benchmarked sizes.
+            int parallelThreshold = 10_000;
+
+            SortAlgorithm seq = new SequentialMergeSort();
+            SortAlgorithm par = new ParallelMergeSort(parallelThreshold);
+            SortAlgorithm[] algorithms = {seq, par, arraysSort, arraysParallelSort};
+
             for (String pattern : patterns) {
                 int[] baseArray;
                 if ("Random".equals(pattern)) {
@@ -45,7 +49,7 @@ public class SortBenchmark {
                     baseArray = generateReverseSortedArray(size);
                 }
 
-                System.out.println("Size = " + size + ", Pattern = " + pattern);
+                System.out.println("Size = " + size + ", Pattern = " + pattern + ", Parallel threshold = " + parallelThreshold);
                 for (int i = 0; i < algorithms.length; i++) {
                     long avgNanos = benchmarkAlgorithm(algorithms[i], baseArray, RUNS_PER_CASE);
                     double avgMillis = avgNanos / 1_000_000.0;

@@ -56,7 +56,6 @@ public class SortGUI {
         outputArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
         JScrollPane scrollPane = new JScrollPane(outputArea);
 
-        ArrayVisualizationPanel visualizationPanel = new ArrayVisualizationPanel();
         PerformanceChartPanel performanceChartPanel = new PerformanceChartPanel();
 
         int row = 0;
@@ -97,7 +96,6 @@ public class SortGUI {
 
         JTabbedPane tabbedPane = new JTabbedPane();
         tabbedPane.addTab("Log", scrollPane);
-        tabbedPane.addTab("Array Visualization", visualizationPanel);
         tabbedPane.addTab("Performance Chart", performanceChartPanel);
 
         frame.setLayout(new BorderLayout());
@@ -142,7 +140,6 @@ public class SortGUI {
             }
 
             int[] arrayToSort = Arrays.copyOf(original, original.length);
-            int[] visualizationArray = Arrays.copyOf(original, original.length);
 
             SortAlgorithm algorithm;
             if ("Sequential Merge Sort".equals(algorithmName)) {
@@ -175,15 +172,6 @@ public class SortGUI {
             outputArea.append("After  (first " + previewLength + "): " + Arrays.toString(afterPreview) + "\n");
             outputArea.append("------------------------------------------------------------\n");
 
-            // Update visualization only for reasonably small arrays
-            if (size <= 200 && visualizationArray.length > 0) {
-                animateMergeSortVisualization(visualizationArray, visualizationPanel);
-            } else if (size > 200) {
-                visualizationPanel.showMessage("Visualization is only shown for array sizes up to 200 elements.");
-            } else {
-                visualizationPanel.showMessage("No data to visualize.");
-            }
-
             // Update performance chart with latest measurement
             performanceChartPanel.addPoint(size, (double) durationMs, algorithmName);
         });
@@ -192,95 +180,25 @@ public class SortGUI {
     }
 
     /**
-     * Panel that draws the current state of an integer array as vertical bars.
-     */
-    private static class ArrayVisualizationPanel extends JPanel {
-
-        private int[] array;
-        private String message;
-
-        void setArray(int[] array) {
-            this.array = array;
-            this.message = null;
-            repaint();
-        }
-
-        void showMessage(String message) {
-            this.message = message;
-            this.array = null;
-            repaint();
-        }
-
-        @Override
-        protected void paintComponent(Graphics g) {
-            super.paintComponent(g);
-
-            if (array == null || array.length == 0) {
-                g.setColor(Color.DARK_GRAY);
-                String text = (message != null) ? message : "No data to visualize.";
-                g.drawString(text, 10, getHeight() / 2);
-                return;
-            }
-
-            int width = getWidth();
-            int height = getHeight();
-            int n = array.length;
-
-            int barWidth = Math.max(1, width / Math.max(1, n));
-
-            int min = array[0];
-            int max = array[0];
-            for (int v : array) {
-                if (v < min) {
-                    min = v;
-                }
-                if (v > max) {
-                    max = v;
-                }
-            }
-            double range = max - min;
-            if (range == 0) {
-                range = 1;
-            }
-
-            g.setColor(new Color(220, 220, 220));
-            g.fillRect(0, 0, width, height);
-
-            g.setColor(new Color(100, 149, 237));
-            for (int i = 0; i < n; i++) {
-                double normalized = (array[i] - min) / range;
-                int barHeight = (int) (normalized * (height - 20));
-                int x = i * barWidth;
-                int y = height - barHeight;
-                g.fillRect(x, y, barWidth - 1, barHeight);
-            }
-
-            g.setColor(Color.DARK_GRAY);
-            g.drawString("Array visualization (bars scaled by value)", 10, 15);
-        }
-    }
-
-    /**
-     * Simple panel that plots time vs. array size as points, colored by algorithm.
+     * Simple time-vs-size plot shown in the GUI.
      */
     private static class PerformanceChartPanel extends JPanel {
-
         private static class DataPoint {
             final int size;
-            final double millis;
+            final double timeMs;
             final String algorithm;
 
-            DataPoint(int size, double millis, String algorithm) {
+            DataPoint(int size, double timeMs, String algorithm) {
                 this.size = size;
-                this.millis = millis;
+                this.timeMs = timeMs;
                 this.algorithm = algorithm;
             }
         }
 
         private final List<DataPoint> points = new ArrayList<>();
 
-        void addPoint(int size, double millis, String algorithm) {
-            points.add(new DataPoint(size, millis, algorithm));
+        void addPoint(int size, double timeMs, String algorithm) {
+            points.add(new DataPoint(size, timeMs, algorithm));
             repaint();
         }
 
@@ -289,7 +207,6 @@ public class SortGUI {
             super.paintComponent(g);
 
             if (points.isEmpty()) {
-                g.setColor(Color.DARK_GRAY);
                 g.drawString("Run sorts in the GUI to see time vs. size plotted here.", 10, getHeight() / 2);
                 return;
             }
@@ -297,28 +214,32 @@ public class SortGUI {
             int width = getWidth();
             int height = getHeight();
 
-            int padding = 40;
-            int chartWidth = width - 2 * padding;
-            int chartHeight = height - 2 * padding;
+            int paddingLeft = 70;   // room for Y-axis numbers
+            int paddingRight = 30;
+            int paddingTop = 30;
+            int paddingBottom = 60; // room for X-axis numbers + label
 
-            int minSize = points.get(0).size;
-            int maxSize = points.get(0).size;
-            double minTime = points.get(0).millis;
-            double maxTime = points.get(0).millis;
+            int x0 = paddingLeft;
+            int y0 = height - paddingBottom;
+            int x1 = width - paddingRight;
+            int y1 = paddingTop;
+
+            // Axes
+            g.setColor(Color.DARK_GRAY);
+            g.drawLine(x0, y0, x1, y0); // x-axis
+            g.drawLine(x0, y0, x0, y1); // y-axis
+
+            // Find min/max for scaling
+            int minSize = Integer.MAX_VALUE;
+            int maxSize = Integer.MIN_VALUE;
+            double minTime = Double.POSITIVE_INFINITY;
+            double maxTime = Double.NEGATIVE_INFINITY;
 
             for (DataPoint p : points) {
-                if (p.size < minSize) {
-                    minSize = p.size;
-                }
-                if (p.size > maxSize) {
-                    maxSize = p.size;
-                }
-                if (p.millis < minTime) {
-                    minTime = p.millis;
-                }
-                if (p.millis > maxTime) {
-                    maxTime = p.millis;
-                }
+                minSize = Math.min(minSize, p.size);
+                maxSize = Math.max(maxSize, p.size);
+                minTime = Math.min(minTime, p.timeMs);
+                maxTime = Math.max(maxTime, p.timeMs);
             }
 
             if (minSize == maxSize) {
@@ -328,156 +249,99 @@ public class SortGUI {
                 maxTime = minTime + 1.0;
             }
 
-            g.setColor(Color.WHITE);
-            g.fillRect(0, 0, width, height);
-
-            g.setColor(Color.BLACK);
-            int x0 = padding;
-            int y0 = height - padding;
-            int x1 = width - padding;
-            int y1 = padding;
-
-            g.drawLine(x0, y0, x1, y0); // X axis
-            g.drawLine(x0, y0, x0, y1); // Y axis
+            // Ticks + numeric labels (make the chart readable)
+            drawTicksAndLabels(g, x0, y0, x1, y1, minSize, maxSize, minTime, maxTime);
 
             // Axis labels
-            g.drawString("Array size", (x0 + x1) / 2 - 20, height - 10);
-            g.drawString("Time (ms)", 10, (y0 + y1) / 2);
+            g.setColor(Color.BLACK);
+            g.drawString("Array size (n)", (x0 + x1) / 2 - 35, height - 15);
+            g.drawString("Time (ms)", 10, y1 + 10);
 
-            // Draw numeric ticks for X (array size)
-            int xTicks = 5;
-            for (int i = 0; i <= xTicks; i++) {
-                double t = i / (double) xTicks;
-                int x = x0 + (int) (t * chartWidth);
-                int y = y0;
-                g.drawLine(x, y - 4, x, y + 4);
-                int value = (int) Math.round(minSize + t * (maxSize - minSize));
-                String label = Integer.toString(value);
-                int labelWidth = g.getFontMetrics().stringWidth(label);
-                g.drawString(label, x - labelWidth / 2, y + 18);
-            }
-
-            // Draw numeric ticks for Y (time in ms)
-            int yTicks = 5;
-            for (int i = 0; i <= yTicks; i++) {
-                double t = i / (double) yTicks;
-                int x = x0;
-                int y = y0 - (int) (t * chartHeight);
-                g.drawLine(x - 4, y, x + 4, y);
-                double value = minTime + t * (maxTime - minTime);
-                String label = String.format("%.1f", value);
-                int labelWidth = g.getFontMetrics().stringWidth(label);
-                g.drawString(label, x - labelWidth - 6, y + 4);
-            }
-
+            // Plot points (colored by algorithm)
             for (DataPoint p : points) {
-                double xNorm = (p.size - minSize) / (double) (maxSize - minSize);
-                double yNorm = (p.millis - minTime) / (maxTime - minTime);
-
-                int x = x0 + (int) (xNorm * chartWidth);
-                int y = y0 - (int) (yNorm * chartHeight);
+                int x = x0 + (int) ((p.size - minSize) * 1.0 * (x1 - x0) / (maxSize - minSize));
+                int y = y0 - (int) ((p.timeMs - minTime) * 1.0 * (y0 - y1) / (maxTime - minTime));
 
                 g.setColor(colorForAlgorithm(p.algorithm));
-                g.fillOval(x - 3, y - 3, 6, 6);
+                g.fillOval(x - 4, y - 4, 8, 8);
             }
 
-            int legendX = x0 + 10;
-            int legendY = y1 + 15;
-            int dy = 15;
-
-            String[] algorithms = {"Sequential Merge Sort", "Parallel Merge Sort", "Arrays.sort", "Arrays.parallelSort"};
-            for (String name : algorithms) {
-                g.setColor(colorForAlgorithm(name));
-                g.fillRect(legendX, legendY - 8, 10, 10);
+            // Legend
+            int lx = x0 + 10;
+            int ly = y1 + 10;
+            String[] algs = {"Sequential Merge Sort", "Parallel Merge Sort", "Arrays.sort", "Arrays.parallelSort"};
+            for (String a : algs) {
+                g.setColor(colorForAlgorithm(a));
+                g.fillRect(lx, ly - 8, 10, 10);
                 g.setColor(Color.BLACK);
-                g.drawString(name, legendX + 15, legendY);
-                legendY += dy;
+                g.drawString(a, lx + 15, ly);
+                ly += 15;
             }
+        }
+
+        private void drawTicksAndLabels(
+                Graphics g,
+                int x0, int y0, int x1, int y1,
+                int minSize, int maxSize,
+                double minTime, double maxTime
+        ) {
+            g.setColor(Color.GRAY);
+
+            int xTicks = 5;
+            int yTicks = 5;
+            int tickLen = 6;
+
+            // X-axis ticks (array size)
+            for (int t = 0; t <= xTicks; t++) {
+                double frac = t / (double) xTicks;
+                int x = x0 + (int) (frac * (x1 - x0));
+                g.drawLine(x, y0, x, y0 + tickLen);
+
+                int value = (int) Math.round(minSize + frac * (maxSize - minSize));
+                String label = formatSize(value);
+                int labelWidth = g.getFontMetrics().stringWidth(label);
+                g.drawString(label, x - labelWidth / 2, y0 + tickLen + 14);
+            }
+
+            // Y-axis ticks (time ms)
+            for (int t = 0; t <= yTicks; t++) {
+                double frac = t / (double) yTicks;
+                int y = y0 - (int) (frac * (y0 - y1));
+                g.drawLine(x0 - tickLen, y, x0, y);
+
+                double value = minTime + frac * (maxTime - minTime);
+                String label = formatMs(value);
+                int labelWidth = g.getFontMetrics().stringWidth(label);
+                g.drawString(label, x0 - tickLen - 6 - labelWidth, y + 5);
+            }
+        }
+
+        private String formatSize(int n) {
+            // Use k/M suffixes for readability
+            if (n >= 1_000_000) {
+                double m = n / 1_000_000.0;
+                return (m == Math.floor(m)) ? String.format("%.0fM", m) : String.format("%.1fM", m);
+            }
+            if (n >= 1_000) {
+                double k = n / 1_000.0;
+                return (k == Math.floor(k)) ? String.format("%.0fk", k) : String.format("%.1fk", k);
+            }
+            return Integer.toString(n);
+        }
+
+        private String formatMs(double ms) {
+            // Keep labels compact
+            if (ms >= 10) return String.format("%.0f", ms);
+            if (ms >= 1) return String.format("%.1f", ms);
+            return String.format("%.2f", ms);
         }
 
         private Color colorForAlgorithm(String algorithm) {
-            if ("Sequential Merge Sort".equals(algorithm) || "SequentialMergeSort".equals(algorithm)) {
-                return new Color(52, 152, 219); // blue
-            }
-            if ("Parallel Merge Sort".equals(algorithm) || "ParallelMergeSort".equals(algorithm)) {
-                return new Color(46, 204, 113); // green
-            }
-            if ("Arrays.sort".equals(algorithm)) {
-                return new Color(231, 76, 60); // red
-            }
-            if ("Arrays.parallelSort".equals(algorithm)) {
-                return new Color(155, 89, 182); // purple
-            }
-            return Color.DARK_GRAY;
-        }
-    }
-
-    /**
-     * Builds a sequence of intermediate array states corresponding to merges in a
-     * sequential merge sort, then plays them back as an animation in the given panel.
-     */
-    private static void animateMergeSortVisualization(int[] original, ArrayVisualizationPanel panel) {
-        if (original == null || original.length == 0) {
-            panel.showMessage("No data to visualize.");
-            return;
-        }
-
-        int[] working = Arrays.copyOf(original, original.length);
-        List<int[]> steps = new ArrayList<>();
-
-        int[] temp = new int[working.length];
-        captureMergeSortSteps(working, 0, working.length - 1, temp, steps);
-
-        if (steps.isEmpty()) {
-            panel.setArray(working);
-            return;
-        }
-
-        final int[] index = {0};
-        panel.setArray(steps.get(0));
-
-        Timer timer = new Timer(80, e -> {
-            index[0]++;
-            if (index[0] >= steps.size()) {
-                ((Timer) e.getSource()).stop();
-            } else {
-                panel.setArray(steps.get(index[0]));
-            }
-        });
-        timer.start();
-    }
-
-    private static void captureMergeSortSteps(int[] array, int left, int right, int[] temp, List<int[]> steps) {
-        if (left < right) {
-            int mid = left + (right - left) / 2;
-            captureMergeSortSteps(array, left, mid, temp, steps);
-            captureMergeSortSteps(array, mid + 1, right, temp, steps);
-            captureMerge(array, left, mid, right, temp);
-            steps.add(Arrays.copyOf(array, array.length));
-        }
-    }
-
-    private static void captureMerge(int[] array, int left, int mid, int right, int[] temp) {
-        System.arraycopy(array, left, temp, left, right - left + 1);
-
-        int i = left;
-        int j = mid + 1;
-        int k = left;
-
-        while (i <= mid && j <= right) {
-            if (temp[i] <= temp[j]) {
-                array[k++] = temp[i++];
-            } else {
-                array[k++] = temp[j++];
-            }
-        }
-
-        while (i <= mid) {
-            array[k++] = temp[i++];
-        }
-
-        while (j <= right) {
-            array[k++] = temp[j++];
+            if ("Sequential Merge Sort".equals(algorithm)) return new Color(0x1f77b4); // blue
+            if ("Parallel Merge Sort".equals(algorithm)) return new Color(0xff7f0e);  // orange
+            if ("Arrays.sort".equals(algorithm)) return new Color(0x2ca02c);          // green
+            if ("Arrays.parallelSort".equals(algorithm)) return new Color(0xd62728);  // red
+            return Color.GRAY;
         }
     }
 }
